@@ -53,29 +53,29 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
         if (methodExists(FROM_JSON_FIELD_NAME, typeNode, 1) != MemberExistsResult.NOT_EXISTS) {
             annotationNode.addWarning("Field '" + FROM_JSON_FIELD_NAME + "' already exists.");
         } else {
-            JCTree.JCMethodDecl method = createFromJsonMethod(typeNode, annotationNode.get());
-            injectMethod(typeNode, method);
+//            JCTree.JCMethodDecl method = createFromJsonMethod(typeNode, annotationNode.get());
+//            injectMethod(typeNode, method);
         }
 
     }
 
-    private JCTree.JCMethodDecl createFromJsonMethod(JavacNode typeNode, JCTree jcTree) {
-        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
-        JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
-        JCTree.JCStatement returnStatement = maker.Return(maker.Literal(" com.alibaba.fastjson.JSON.parseObject(jsonString,%s)"));
-        JCTree.JCMethodDecl methodDef = maker.MethodDef(
-                mods,
-                typeNode.toName(FROM_JSON_FIELD_NAME),
-                maker.Ident(typeNode.toName("this")).getName(),
-                List.<JCTree.JCTypeParameter>nil(),
-                List.<JCTree.JCVariableDecl>nil(),
-                List.<JCTree.JCExpression>nil(),
-                maker.Block(0, List.of(returnStatement)),
-                null
-        );
-        createRelevantNonNullAnnotation(typeNode, methodDef);
-        return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
-    }
+//    private JCTree.JCMethodDecl createFromJsonMethod(JavacNode typeNode, JCTree jcTree) {
+////        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
+////        JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
+////        JCTree.JCStatement returnStatement = maker.Return(maker.Literal(" com.alibaba.fastjson.JSON.parseObject(jsonString,%s)"));
+////        JCTree.JCMethodDecl methodDef = maker.MethodDef(
+////                mods,
+////                typeNode.toName(FROM_JSON_FIELD_NAME),
+////                maker.Ident(typeNode.toName("this")),
+////                List.<JCTree.JCTypeParameter>nil(),
+////                List.<JCTree.JCVariableDecl>nil(),
+////                List.<JCTree.JCExpression>nil(),
+////                maker.Block(0, List.of(returnStatement)),
+////                null
+////        );
+////        createRelevantNonNullAnnotation(typeNode, methodDef);
+////        return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
+////    }
 
     private JCTree.JCMethodDecl createToJsonMethod(JavacNode typeNode, JCTree jcTree) {
         lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
