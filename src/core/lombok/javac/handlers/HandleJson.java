@@ -32,7 +32,6 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
             annotationNode.addError("@JsonSerializable is only supported on a class.");
             return;
         }
-
         boolean notAClass = true;
         if (typeNode.get() instanceof JCTree.JCClassDecl) {
             long flags = ((JCTree.JCClassDecl) typeNode.get()).mods.flags;
@@ -60,27 +59,40 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
     }
 
 //    private JCTree.JCMethodDecl createFromJsonMethod(JavacNode typeNode, JCTree jcTree) {
-////        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
-////        JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
-////        JCTree.JCStatement returnStatement = maker.Return(maker.Literal(" com.alibaba.fastjson.JSON.parseObject(jsonString,%s)"));
-////        JCTree.JCMethodDecl methodDef = maker.MethodDef(
-////                mods,
-////                typeNode.toName(FROM_JSON_FIELD_NAME),
-////                maker.Ident(typeNode.toName("this")),
-////                List.<JCTree.JCTypeParameter>nil(),
-////                List.<JCTree.JCVariableDecl>nil(),
-////                List.<JCTree.JCExpression>nil(),
-////                maker.Block(0, List.of(returnStatement)),
-////                null
-////        );
-////        createRelevantNonNullAnnotation(typeNode, methodDef);
-////        return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
-////    }
+//        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
+//        JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
+//        JCTree.JCStatement returnStatement = maker.Return(maker.Literal(" com.alibaba.fastjson.JSON.parseObject(jsonString,%s)"));
+//        JCTree.JCMethodDecl methodDef = maker.MethodDef(
+//                mods,
+//                typeNode.toName(FROM_JSON_FIELD_NAME),
+//                maker.Ident(typeNode.toName("this")),
+//                List.<JCTree.JCTypeParameter>nil(),
+//                List.<JCTree.JCVariableDecl>nil(),
+//                List.<JCTree.JCExpression>nil(),
+//                maker.Block(0, List.of(returnStatement)),
+//                null
+//        );
+//        createRelevantNonNullAnnotation(typeNode, methodDef);
+//        return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
+//    }
 
     private JCTree.JCMethodDecl createToJsonMethod(JavacNode typeNode, JCTree jcTree) {
         lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
+
+        JCTree.JCClassDecl classDecl = (JCTree.JCClassDecl) typeNode.get();
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC);
-        JCTree.JCStatement returnStatement = maker.Return(maker.Literal(" com.alibaba.fastjson.JSON.toJSONString(this)"));
+//        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.toJSONString");
+        JCTree.JCExpression jcExpression = chainDots(typeNode, "java", "util", "Arrays", "toString");
+        List<JCTree.JCTypeParameter> parameters = classDecl.getTypeParameters();
+        List<JCTree.JCExpression> list = List.nil();
+        for (int i = 0; i < parameters.size(); i++) {
+            list.add(i, maker.Ident(parameters.get(i).name));
+        }
+
+        JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, list);
+        JCTree.JCStatement statements = maker.Return(memberAccessor);
+        JCTree.JCBlock body = maker.Block(0, List.of(statements));
+
         JCTree.JCMethodDecl methodDef = maker.MethodDef(
                 mods,
                 typeNode.toName(TO_JSON_FIELD_NAME),
@@ -88,12 +100,13 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
                 List.<JCTree.JCTypeParameter>nil(),
                 List.<JCTree.JCVariableDecl>nil(),
                 List.<JCTree.JCExpression>nil(),
-                maker.Block(0, List.of(returnStatement)),
+                body,
                 null
         );
         createRelevantNonNullAnnotation(typeNode, methodDef);
         return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
     }
+
     /**
      * todo
      *

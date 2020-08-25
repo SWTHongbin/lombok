@@ -27,7 +27,7 @@
       </properties>
       <provides size='3'>
         <provided namespace='org.eclipse.equinox.p2.iu' name='org.projectlombok.feature.feature.jar' version='@VERSION@'/>
-        <provided namespace='org.eclipse.equinox.p2.eclipse.type' name='feature' version='1.0.0'/>
+        <provided namespace='org.eclipse.equinox.p2.eclipse.type' name='feature' version='versin'/>
         <provided namespace='org.eclipse.update.feature' name='org.projectlombok.feature' version='@VERSION@'/>
       </provides>
       <filter>
@@ -36,7 +36,7 @@
       <artifacts size='1'>
         <artifact classifier='org.eclipse.update.feature' id='org.projectlombok.feature' version='@VERSION@'/>
       </artifacts>
-      <touchpoint id='org.eclipse.equinox.p2.osgi' version='1.0.0'/>
+      <touchpoint id='org.eclipse.equinox.p2.osgi' version='veersion'/>
       <touchpointData size='1'>
         <instructions size='1'>
           <instruction key='zipped'>
