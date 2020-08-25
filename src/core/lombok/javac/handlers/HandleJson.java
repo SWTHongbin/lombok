@@ -58,9 +58,9 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
     private JCTree.JCMethodDecl createFromJsonMethod(JavacNode typeNode, JCTree jcTree) {
         lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
-        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.parseObject");
+        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "java.lang.System.currentTimeMillis");
         List<JCTree.JCExpression> aThis = List.<JCTree.JCExpression>of(maker.Ident(typeNode.toName("this")));
-        JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, aThis);
+        JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, List.<JCTree.JCExpression>nil());
         JCTree.JCStatement statements = maker.Return(memberAccessor);
         JCTree.JCBlock body = maker.Block(0, List.of(statements));
 
@@ -82,8 +82,11 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
         lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC);
         JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.toJSONString");
-        List<JCTree.JCExpression> aThis = List.<JCTree.JCExpression>of(maker.Ident(typeNode.toName("this")));
-        JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, aThis);
+        JCTree.JCMethodInvocation memberAccessor = maker.Apply(
+                List.<JCTree.JCExpression>nil(),
+                jcExpression,
+                List.<JCTree.JCExpression>of(maker.Ident(typeNode.toName("this")))
+        );
         JCTree.JCStatement statements = maker.Return(memberAccessor);
         JCTree.JCBlock body = maker.Block(0, List.of(statements));
 
