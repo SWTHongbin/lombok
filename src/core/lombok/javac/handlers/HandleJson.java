@@ -66,15 +66,13 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
                 , genJavaLangTypeRef(typeNode, "String"),
                 null);
 
-        ListBuffer<JCTree.JCVariableDecl> params = new ListBuffer<>();
-        params.append(param);
-
         JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
         JCTree.JCExpression returnType = namePlusTypeParamsToTypeReference(maker, typeNode, type.typarams);
-        typeNode.addWarning("---1-++++----" + maker.Select(returnType, typeNode.toName("Class")));
+
         ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
-        args.append(maker.Literal(JSON_STRING_PARAMETERS_NAME));
-        args.append(maker.Select(returnType, typeNode.toName("Class")));
+        args.append(maker.Literal(JSON_STRING_PARAMETERS_NAME))
+                .append(maker.Select(returnType, typeNode.toName("class")));
+        typeNode.addWarning("-----" + maker.Select(returnType, typeNode.toName("class")));
 
         JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.parseObject");
         JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
