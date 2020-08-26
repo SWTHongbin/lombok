@@ -61,24 +61,32 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
         lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
 
-        JCTree.JCVariableDecl param = maker.VarDef(mods, typeNode.toName(JSON_STRING_PARAMETERS_NAME)
+        long flags = addFinalIfNeeded(Flags.PARAMETER, typeNode.getContext());
+        JCTree.JCVariableDecl param = maker.VarDef(maker.Modifiers(flags), typeNode.toName(JSON_STRING_PARAMETERS_NAME)
                 , genJavaLangTypeRef(typeNode, "String"),
                 null);
-        List<JCTree.JCVariableDecl> parameters = List.<JCTree.JCVariableDecl>of(param);
-        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.parseObject");
+        List<JCTree.JCVariableDecl> params = List.<JCTree.JCVariableDecl>of(param);
+
+        JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
 
         ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
-        args.append(maker.Ident(typeNode.toName(JSON_STRING_PARAMETERS_NAME)))
-                .append(maker.Ident(typeNode.toName("class")));
+        JCTree.JCExpression returnType = namePlusTypeParamsToTypeReference(maker, typeNode, type.typarams);
+        typeNode.addWarning("--------" +);
+        args.append(maker.Literal(JSON_STRING_PARAMETERS_NAME));
+        // .append(namePlusTypeParamsToTypeReference(maker, typeNode, type.typarams));
+
+        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.parseObject");
+//        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "java.lang.String.valueOf");
         JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
         JCTree.JCStatement statements = maker.Return(memberAccessor);
         JCTree.JCBlock body = maker.Block(0, List.of(statements));
 
-        JCTree.JCMethodDecl methodDef = maker.MethodDef(mods,
+        JCTree.JCMethodDecl methodDef = maker.MethodDef(
+                mods,
                 typeNode.toName(FROM_JSON_FIELD_NAME),
-                maker.Ident(typeNode.toName("this")),
+                returnType,
                 List.<JCTree.JCTypeParameter>nil(),
-                parameters,
+                params,
                 List.<JCTree.JCExpression>nil(),
                 body,
                 null);
