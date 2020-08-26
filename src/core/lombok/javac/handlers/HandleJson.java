@@ -16,7 +16,11 @@ import static lombok.javac.handlers.JavacHandlerUtil.*;
 /**
  * @author lihongbin
  * Handles the {@code lombok.JsonSerializable} annotation for javac.
+ * <p>
+ * public String toJson();
+ * public static POJO fromJson(String)
  */
+
 @ProviderFor(JavacAnnotationHandler.class)
 public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
     private static final String TO_JSON_FIELD_NAME = "toJson",
@@ -57,54 +61,11 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
 
     }
 
-    private JCTree.JCMethodDecl createFromJsonMethod(JavacNode typeNode, JCTree jcTree) {
-        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
-        JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
-
-        long flags = addFinalIfNeeded(Flags.PARAMETER, typeNode.getContext());
-        JCTree.JCVariableDecl param = maker.VarDef(maker.Modifiers(flags), typeNode.toName(JSON_STRING_PARAMETERS_NAME)
-                , genJavaLangTypeRef(typeNode, "String"),
-                null);
-
-        JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
-        JCTree.JCExpression returnType = namePlusTypeParamsToTypeReference(maker, typeNode, type.typarams);
-
-        ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
-        args.append(maker.Literal(JSON_STRING_PARAMETERS_NAME))
-                .append(maker.Select(returnType, typeNode.toName("class")));
-        typeNode.addWarning("-----" + maker.Select(returnType, typeNode.toName("class")));
-
-        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.parseObject");
-        JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
-        JCTree.JCStatement statements = maker.Return(memberAccessor);
-        JCTree.JCBlock body = maker.Block(0, List.of(statements));
-
-        JCTree.JCMethodDecl methodDef = maker.MethodDef(
-                mods,
-                typeNode.toName(FROM_JSON_FIELD_NAME),
-                returnType,
-                List.<JCTree.JCTypeParameter>nil(),
-                List.<JCTree.JCVariableDecl>of(param),
-                List.<JCTree.JCExpression>nil(),
-                body,
-                null);
-        createRelevantNonNullAnnotation(typeNode, methodDef);
-        return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
-    }
-
     private JCTree.JCMethodDecl createToJsonMethod(JavacNode typeNode, JCTree jcTree) {
         lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
+
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC);
-
-        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.toJSONString");
-        JCTree.JCMethodInvocation memberAccessor = maker.Apply(
-                List.<JCTree.JCExpression>nil(),
-                jcExpression,
-                List.<JCTree.JCExpression>of(maker.Ident(typeNode.toName("this")))
-        );
-        JCTree.JCStatement statements = maker.Return(memberAccessor);
-        JCTree.JCBlock body = maker.Block(0, List.of(statements));
-
+        JCTree.JCStatement statements = getToJsonJcStatement(typeNode, maker);
         JCTree.JCMethodDecl methodDef = maker.MethodDef(
                 mods,
                 typeNode.toName(TO_JSON_FIELD_NAME),
@@ -112,17 +73,61 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
                 List.<JCTree.JCTypeParameter>nil(),
                 List.<JCTree.JCVariableDecl>nil(),
                 List.<JCTree.JCExpression>nil(),
-                body,
+                maker.Block(0, List.of(statements)),
                 null
         );
         createRelevantNonNullAnnotation(typeNode, methodDef);
         return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
     }
 
-    /**
-     * todo
-     *
-     * public String toJson();
-     * public static POJO fromJson(String)
-     */
+    private JCTree.JCMethodDecl createFromJsonMethod(JavacNode typeNode, JCTree jcTree) {
+        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
+        JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
+        JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
+        JCTree.JCExpression returnType = namePlusTypeParamsToTypeReference(maker, typeNode, type.typarams);
+        JCTree.JCStatement statements = getFromJsonStatement(typeNode, maker, returnType);
+
+        JCTree.JCMethodDecl methodDef = maker.MethodDef(
+                mods,
+                typeNode.toName(FROM_JSON_FIELD_NAME),
+                returnType,
+                List.<JCTree.JCTypeParameter>nil(),
+                List.<JCTree.JCVariableDecl>of(buildFromJsonParam(typeNode, maker)),
+                List.<JCTree.JCExpression>nil(),
+                maker.Block(0, List.of(statements)),
+                null);
+
+        createRelevantNonNullAnnotation(typeNode, methodDef);
+        return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
+    }
+
+    private JCTree.JCStatement getFromJsonStatement(JavacNode typeNode, lombok.javac.JavacTreeMaker maker, JCTree.JCExpression returnType) {
+        ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
+        args.append(maker.Ident(typeNode.toName(JSON_STRING_PARAMETERS_NAME)))
+                .append(maker.Select(returnType, typeNode.toName("class")));
+
+        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.parseObject");
+        JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
+        return maker.Return(memberAccessor);
+    }
+
+    private JCTree.JCVariableDecl buildFromJsonParam(JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
+        long flags = addFinalIfNeeded(Flags.PARAMETER, typeNode.getContext());
+        return maker.VarDef(maker.Modifiers(flags), typeNode.toName(JSON_STRING_PARAMETERS_NAME)
+                , genJavaLangTypeRef(typeNode, "String"),
+                null);
+    }
+
+
+    private JCTree.JCStatement getToJsonJcStatement(JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
+        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.toJSONString");
+        JCTree.JCMethodInvocation memberAccessor = maker.Apply(
+                List.<JCTree.JCExpression>nil(),
+                jcExpression,
+                List.<JCTree.JCExpression>of(maker.Ident(typeNode.toName("this")))
+        );
+        return maker.Return(memberAccessor);
+    }
+
+
 }
