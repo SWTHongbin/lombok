@@ -65,18 +65,18 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
         JCTree.JCVariableDecl param = maker.VarDef(maker.Modifiers(flags), typeNode.toName(JSON_STRING_PARAMETERS_NAME)
                 , genJavaLangTypeRef(typeNode, "String"),
                 null);
-        List<JCTree.JCVariableDecl> params = List.<JCTree.JCVariableDecl>of(param);
+
+        ListBuffer<JCTree.JCVariableDecl> params = new ListBuffer<>();
+        params.append(param);
 
         JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
-
-        ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
         JCTree.JCExpression returnType = namePlusTypeParamsToTypeReference(maker, typeNode, type.typarams);
-        typeNode.addWarning("--------" +);
+        typeNode.addWarning("---1-++++----" + maker.Select(returnType, typeNode.toName("Class")));
+        ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
         args.append(maker.Literal(JSON_STRING_PARAMETERS_NAME));
-        // .append(namePlusTypeParamsToTypeReference(maker, typeNode, type.typarams));
+        args.append(maker.Select(returnType, typeNode.toName("Class")));
 
         JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.parseObject");
-//        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "java.lang.String.valueOf");
         JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
         JCTree.JCStatement statements = maker.Return(memberAccessor);
         JCTree.JCBlock body = maker.Block(0, List.of(statements));
@@ -86,7 +86,7 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
                 typeNode.toName(FROM_JSON_FIELD_NAME),
                 returnType,
                 List.<JCTree.JCTypeParameter>nil(),
-                params,
+                List.<JCTree.JCVariableDecl>of(param),
                 List.<JCTree.JCExpression>nil(),
                 body,
                 null);
