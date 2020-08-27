@@ -83,9 +83,8 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
         lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
         JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
-        JCTree.JCExpression returnType = namePlusTypeParamsToTypeReference(maker, typeNode, type.typarams);
+        JCTree.JCExpression returnType = maker.Ident(type.name);
         JCTree.JCStatement statements = getFromJsonStatement(typeNode, maker, returnType);
-
         JCTree.JCMethodDecl methodDef = maker.MethodDef(
                 mods,
                 typeNode.toName(FROM_JSON_FIELD_NAME),
