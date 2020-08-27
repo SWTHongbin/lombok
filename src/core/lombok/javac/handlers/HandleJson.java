@@ -76,7 +76,6 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
                 maker.Block(0, List.of(statements)),
                 null
         );
-        createRelevantNonNullAnnotation(typeNode, methodDef);
         return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
     }
 
