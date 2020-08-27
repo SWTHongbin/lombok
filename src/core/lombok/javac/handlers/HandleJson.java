@@ -105,7 +105,7 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
         args.append(maker.Ident(typeNode.toName(JSON_STRING_PARAMETERS_NAME)))
                 .append(maker.Select(returnType, typeNode.toName("class")));
 
-        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.parseObject");
+        JCTree.JCExpression jcExpression = chainDots(typeNode, "com", "xyz", "utils", "JsonUtils", "jsonToBean");
         JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
         return maker.Return(memberAccessor);
     }
@@ -119,7 +119,7 @@ public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
 
 
     private JCTree.JCStatement getToJsonJcStatement(JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
-        JCTree.JCExpression jcExpression = chainDotsString(typeNode, "com.alibaba.fastjson.JSON.toJSONString");
+        JCTree.JCExpression jcExpression = chainDots(typeNode, "com", "xyz", "utils", "JsonUtils", "beanToJson");
         JCTree.JCMethodInvocation memberAccessor = maker.Apply(
                 List.<JCTree.JCExpression>nil(),
                 jcExpression,
