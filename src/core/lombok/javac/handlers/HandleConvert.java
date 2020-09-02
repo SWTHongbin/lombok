@@ -121,21 +121,19 @@ public class HandleConvert extends JavacAnnotationHandler<Convertable> {
 
     private JCTree.JCVariableDecl buildToBeanParam(JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
         long flags = addFinalIfNeeded(Flags.PARAMETER, typeNode.getContext());
-        JCTree.JCVariableDecl aClass = maker.VarDef(maker.Modifiers(flags),
+        return maker.VarDef(maker.Modifiers(flags),
                 typeNode.toName(CLAZZ_PARAM_NAME),
                 maker.TypeApply(maker.Ident(typeNode.toName("Class")), List.<JCTree.JCExpression>of(maker.Ident(typeNode.toName("T")))),
                 null);
-        return aClass;
     }
 
 
     private JCTree.JCVariableDecl buildFromBeanParam(JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
         long flags = addFinalIfNeeded(Flags.PARAMETER, typeNode.getContext());
-        JCTree.JCVariableDecl aClass = maker.VarDef(maker.Modifiers(flags),
+        return maker.VarDef(maker.Modifiers(flags),
                 typeNode.toName(PARAM_PARAM_NAME),
                 maker.Ident(typeNode.toName("T")),
                 null);
-        return aClass;
     }
 
 
