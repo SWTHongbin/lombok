@@ -3,31 +3,32 @@ package lombok.javac.handlers;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
-import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import lombok.Convertable;
 import lombok.core.AnnotationValues;
 import lombok.javac.JavacAnnotationHandler;
 import lombok.javac.JavacNode;
+import lombok.javac.JavacTreeMaker;
+
 import org.mangosdk.spi.ProviderFor;
 
 import static lombok.javac.handlers.JavacHandlerUtil.*;
 
 /**
- * @author lihongbin
  * Handles the {@code lombok.Convertable} annotation for javac.
  * <p>
- * public Class<?> toBean();
- * public static Object fromBean(Class<?> cls )
+ * public AnotherPojo toBean();
+ * public static Pojo fromBean(AnotherPojo bean)
  */
 
 @ProviderFor(JavacAnnotationHandler.class)
 public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
-    private static final String TO_BEAN_FIELD_NAME = "toBean",
-            FROM_BEAN_FIELD_NAME = "fromBean",
+    private static final String TO_BEAN_METHOD_NAME = "toBean",
+            FROM_BEAN_METHOD_NAME = "fromBean",
             POJO_PARAM_NAME = "pojo",
-            BEAN_ANNOTATION_NAME = "bean";
+            BEAN_ANNOTATION_NAME = "bean",
+            CONVERT_METHOD = "com.xyz.utils.JsonUtils.convert";
 
 
     @Override
@@ -50,14 +51,14 @@ public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
             return;
         }
 
-        if (methodExists(TO_BEAN_FIELD_NAME, typeNode, -1) != MemberExistsResult.NOT_EXISTS) {
-            annotationNode.addWarning("Field '" + TO_BEAN_FIELD_NAME + "' already exists.");
+        if (methodExists(TO_BEAN_METHOD_NAME, typeNode, -1) != MemberExistsResult.NOT_EXISTS) {
+            annotationNode.addWarning("Method '" + TO_BEAN_METHOD_NAME + "' already exists.");
         } else {
             JCTree.JCMethodDecl method = createToBeanMethod(annotation, typeNode, annotationNode);
             injectMethod(typeNode, method);
         }
-        if (methodExists(FROM_BEAN_FIELD_NAME, typeNode, 1) != MemberExistsResult.NOT_EXISTS) {
-            annotationNode.addWarning("Field '" + FROM_BEAN_FIELD_NAME + "' already exists.");
+        if (methodExists(FROM_BEAN_METHOD_NAME, typeNode, 1) != MemberExistsResult.NOT_EXISTS) {
+            annotationNode.addWarning("Method '" + FROM_BEAN_METHOD_NAME + "' already exists.");
         } else {
             JCTree.JCMethodDecl method = createFromBeanMethod(annotation, typeNode, annotationNode);
             injectMethod(typeNode, method);
@@ -66,14 +67,13 @@ public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
     }
 
     private JCTree.JCMethodDecl createToBeanMethod(AnnotationValues<Convertable> annotation, JavacNode typeNode, JavacNode annotationNode) {
-        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
+        JavacTreeMaker maker = typeNode.getTreeMaker();
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC);
-        String beanClassName = getConvertBeanClassName(annotation);
-        JCTree.JCExpression retrunType = maker.Ident(typeNode.toName(beanClassName));
-        JCTree.JCStatement block = getToBeanJcStatement(retrunType, typeNode, maker);
+        JCTree.JCExpression retrunType = getAnnotatedClassType(annotation, maker, typeNode);
+        JCTree.JCStatement block = buildToBeanJcStatement(retrunType, maker, typeNode);
         JCTree.JCMethodDecl methodDef = maker.MethodDef(
                 mods,
-                typeNode.toName(TO_BEAN_FIELD_NAME),
+                typeNode.toName(TO_BEAN_METHOD_NAME),
                 retrunType,
                 List.<JCTree.JCTypeParameter>nil(),
                 List.<JCTree.JCVariableDecl>nil(),
@@ -84,45 +84,42 @@ public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
         return recursiveSetGeneratedBy(methodDef, annotationNode.get(), typeNode.getContext());
     }
     
-    private String getConvertBeanClassName(AnnotationValues<Convertable> annotation) {
+    private JCTree.JCExpression getAnnotatedClassType(AnnotationValues<Convertable> annotation, JavacTreeMaker maker, JavacNode typeNode) {
     	String beanName = annotation.getRawExpression(BEAN_ANNOTATION_NAME);
-    	return beanName.lastIndexOf(".class")>0?beanName.substring(0, beanName.length()-6):beanName;
+    	beanName = beanName.lastIndexOf(".class")>0?beanName.substring(0, beanName.length()-6):beanName;
+    	return maker.Ident(typeNode.toName(beanName));
     }
     
-    private JCTree.JCStatement getToBeanJcStatement(JCTree.JCExpression beanType, JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
+    private JCTree.JCStatement buildToBeanJcStatement(JCTree.JCExpression beanType, lombok.javac.JavacTreeMaker maker, JavacNode typeNode) {
         ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
-        args.append(maker.Ident(typeNode.toName("this")))
-                .append(maker.Select(beanType, typeNode.toName("class")));
+        args.append(maker.Ident(typeNode.toName("this"))).append(maker.Select(beanType, typeNode.toName("class")));
 
-        JCTree.JCMethodInvocation memberAccessor = maker.Apply(
+        JCTree.JCMethodInvocation convertStatement = maker.Apply(
                 List.<JCTree.JCExpression>nil(),
-                chainDots(typeNode, "com", "xyz", "utils", "JsonUtils", "convert"),
+                chainDotsString(typeNode, CONVERT_METHOD),
                 args.toList()
         );
-        return maker.Return(memberAccessor);
+        return maker.Return(convertStatement);
     }
     
     private JCTree.JCMethodDecl createFromBeanMethod(AnnotationValues<Convertable> annotation, JavacNode typeNode, JavacNode annotationNode) {
-    	lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
+    	JavacTreeMaker maker = typeNode.getTreeMaker();
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
-        String beanClassName = getConvertBeanClassName(annotation);
-        JCTree.JCExpression paramType = maker.Ident(typeNode.toName(beanClassName));
+        JCTree.JCExpression paramType = getAnnotatedClassType(annotation, maker, typeNode);
         JCTree.JCVariableDecl parameter = buildFromBeanParam(paramType, typeNode, maker);
-        
         JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
         JCTree.JCExpression returnType = maker.Ident(type.name);
-        JCTree.JCStatement block = getFromBeanStatement(returnType, typeNode, maker);
+        JCTree.JCStatement block = buildFromBeanJcStatement(returnType, typeNode, maker);
 
         JCTree.JCMethodDecl methodDef = maker.MethodDef(
                 mods,
-                typeNode.toName(FROM_BEAN_FIELD_NAME),
+                typeNode.toName(FROM_BEAN_METHOD_NAME),
                 returnType,
                 List.<JCTree.JCTypeParameter>nil(),
                 List.<JCTree.JCVariableDecl>of(parameter),
                 List.<JCTree.JCExpression>nil(),
                 maker.Block(0, List.of(block)),
                 null);
- //       annotationNode.addError(String.format("methodDef: %s", methodDef));
         createRelevantNonNullAnnotation(typeNode, methodDef);
         return recursiveSetGeneratedBy(methodDef, annotationNode.get(), typeNode.getContext());
     }
@@ -135,15 +132,13 @@ public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
                 null);
     }
 
-
-    private JCTree.JCStatement getFromBeanStatement(JCTree.JCExpression returnType, JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
+    private JCTree.JCStatement buildFromBeanJcStatement(JCTree.JCExpression returnType, JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
         ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
         args.append(maker.Ident(typeNode.toName(POJO_PARAM_NAME)))
                 .append(maker.Select(returnType, typeNode.toName("class")));
 
-        JCTree.JCExpression jcExpression = chainDots(typeNode, "com", "xyz", "utils", "JsonUtils", "convert");
+        JCTree.JCExpression jcExpression = chainDotsString(typeNode, CONVERT_METHOD);
         JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
         return maker.Return(memberAccessor);
     }
-
 }

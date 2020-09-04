@@ -6,9 +6,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * @author lihongbin
  * <p>
- * convert pojo to another bean:
+ * Convert pojo to another bean:
  * @Convertable(bean = AnotherPojo.class)
  * public class Pojo {
  * ......
@@ -26,7 +25,7 @@ import java.lang.annotation.Target;
  * return JsonUtils.convert(this, AnotherPojo.class.getName());
  * }
  * <p>
- * public static Pojo fromVBean(AnotherPojo apojo) {
+ * public static Pojo fromBean(AnotherPojo apojo) {
  * return JsonUtils.convert(apojo, Pojo.class);
  * }
  * <p>
