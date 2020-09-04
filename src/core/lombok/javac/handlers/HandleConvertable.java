@@ -138,7 +138,7 @@ public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
                 .append(maker.Select(returnType, typeNode.toName("class")));
 
         JCTree.JCExpression jcExpression = chainDotsString(typeNode, CONVERT_METHOD);
-        JCTree.JCMethodInvocation memberAccessor = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
-        return maker.Return(memberAccessor);
+        JCTree.JCMethodInvocation convertStatement = maker.Apply(List.<JCTree.JCExpression>nil(), jcExpression, args.toList());
+        return maker.Return(convertStatement);
     }
 }
