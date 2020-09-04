@@ -3,6 +3,7 @@ package lombok.javac.handlers;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCAnnotation;
+import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import lombok.Convertable;
@@ -22,11 +23,11 @@ import static lombok.javac.handlers.JavacHandlerUtil.*;
  */
 
 @ProviderFor(JavacAnnotationHandler.class)
-public class HandleConvert extends JavacAnnotationHandler<Convertable> {
+public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
     private static final String TO_BEAN_FIELD_NAME = "toBean",
             FROM_BEAN_FIELD_NAME = "fromBean",
-            CLAZZ_PARAM_NAME = "clazz",
-            PARAM_PARAM_NAME = "param";
+            POJO_PARAM_NAME = "pojo",
+            BEAN_ANNOTATION_NAME = "bean";
 
 
     @Override
@@ -52,64 +53,46 @@ public class HandleConvert extends JavacAnnotationHandler<Convertable> {
         if (methodExists(TO_BEAN_FIELD_NAME, typeNode, -1) != MemberExistsResult.NOT_EXISTS) {
             annotationNode.addWarning("Field '" + TO_BEAN_FIELD_NAME + "' already exists.");
         } else {
-            JCTree.JCMethodDecl method = createToBeanMethod(typeNode, annotationNode.get());
+            JCTree.JCMethodDecl method = createToBeanMethod(annotation, typeNode, annotationNode);
             injectMethod(typeNode, method);
         }
         if (methodExists(FROM_BEAN_FIELD_NAME, typeNode, 1) != MemberExistsResult.NOT_EXISTS) {
             annotationNode.addWarning("Field '" + FROM_BEAN_FIELD_NAME + "' already exists.");
         } else {
-            JCTree.JCMethodDecl method = createFromBeanMethod(typeNode, annotationNode.get());
+            JCTree.JCMethodDecl method = createFromBeanMethod(annotation, typeNode, annotationNode);
             injectMethod(typeNode, method);
         }
 
     }
 
-    private JCTree.JCMethodDecl createToBeanMethod(JavacNode typeNode, JCTree jcTree) {
+    private JCTree.JCMethodDecl createToBeanMethod(AnnotationValues<Convertable> annotation, JavacNode typeNode, JavacNode annotationNode) {
         lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
         JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC);
-        JCTree.JCStatement statements = getToBeanJcStatement(typeNode, maker);
-        JCTree.JCVariableDecl jcVariableDecl = buildToBeanParam(typeNode, maker);
-        JCTree.JCTypeParameter typaram = maker.TypeParameter(typeNode.toName("T"), List.<JCTree.JCExpression>nil());
-
+        String beanClassName = getConvertBeanClassName(annotation);
+        JCTree.JCExpression retrunType = maker.Ident(typeNode.toName(beanClassName));
+        JCTree.JCStatement block = getToBeanJcStatement(retrunType, typeNode, maker);
         JCTree.JCMethodDecl methodDef = maker.MethodDef(
                 mods,
                 typeNode.toName(TO_BEAN_FIELD_NAME),
-                maker.Ident(typeNode.toName("T")),
-                List.<JCTree.JCTypeParameter>of(typaram),
-                List.<JCTree.JCVariableDecl>of(jcVariableDecl),
+                retrunType,
+                List.<JCTree.JCTypeParameter>nil(),
+                List.<JCTree.JCVariableDecl>nil(),
                 List.<JCTree.JCExpression>nil(),
-                maker.Block(0, List.of(statements)),
+                maker.Block(0, List.of(block)),
                 null
         );
-        return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
+        return recursiveSetGeneratedBy(methodDef, annotationNode.get(), typeNode.getContext());
     }
-
-    private JCTree.JCMethodDecl createFromBeanMethod(JavacNode typeNode, JCTree jcTree) {
-        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
-        JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
-        JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
-        JCTree.JCExpression returnType = maker.Ident(type.name);
-        JCTree.JCStatement statements = getFromBeanStatement(typeNode, maker, returnType);
-        JCTree.JCTypeParameter typaram = maker.TypeParameter(typeNode.toName("T"), List.<JCTree.JCExpression>nil());
-
-        JCTree.JCMethodDecl methodDef = maker.MethodDef(
-                mods,
-                typeNode.toName(FROM_BEAN_FIELD_NAME),
-                returnType,
-                List.<JCTree.JCTypeParameter>of(typaram),
-                List.<JCTree.JCVariableDecl>of(buildFromBeanParam(typeNode, maker)),
-                List.<JCTree.JCExpression>nil(),
-                maker.Block(0, List.of(statements)),
-                null);
-
-        createRelevantNonNullAnnotation(typeNode, methodDef);
-        return recursiveSetGeneratedBy(methodDef, jcTree, typeNode.getContext());
+    
+    private String getConvertBeanClassName(AnnotationValues<Convertable> annotation) {
+    	String beanName = annotation.getRawExpression(BEAN_ANNOTATION_NAME);
+    	return beanName.lastIndexOf(".class")>0?beanName.substring(0, beanName.length()-6):beanName;
     }
-
-    private JCTree.JCStatement getToBeanJcStatement(JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
+    
+    private JCTree.JCStatement getToBeanJcStatement(JCTree.JCExpression beanType, JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
         ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
         args.append(maker.Ident(typeNode.toName("this")))
-                .append(maker.Ident(typeNode.toName(CLAZZ_PARAM_NAME)));
+                .append(maker.Select(beanType, typeNode.toName("class")));
 
         JCTree.JCMethodInvocation memberAccessor = maker.Apply(
                 List.<JCTree.JCExpression>nil(),
@@ -118,28 +101,44 @@ public class HandleConvert extends JavacAnnotationHandler<Convertable> {
         );
         return maker.Return(memberAccessor);
     }
+    
+    private JCTree.JCMethodDecl createFromBeanMethod(AnnotationValues<Convertable> annotation, JavacNode typeNode, JavacNode annotationNode) {
+    	lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
+        JCTree.JCModifiers mods = maker.Modifiers(Flags.PUBLIC | Flags.STATIC);
+        String beanClassName = getConvertBeanClassName(annotation);
+        JCTree.JCExpression paramType = maker.Ident(typeNode.toName(beanClassName));
+        JCTree.JCVariableDecl parameter = buildFromBeanParam(paramType, typeNode, maker);
+        
+        JCTree.JCClassDecl type = (JCTree.JCClassDecl) typeNode.get();
+        JCTree.JCExpression returnType = maker.Ident(type.name);
+        JCTree.JCStatement block = getFromBeanStatement(returnType, typeNode, maker);
 
-    private JCTree.JCVariableDecl buildToBeanParam(JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
+        JCTree.JCMethodDecl methodDef = maker.MethodDef(
+                mods,
+                typeNode.toName(FROM_BEAN_FIELD_NAME),
+                returnType,
+                List.<JCTree.JCTypeParameter>nil(),
+                List.<JCTree.JCVariableDecl>of(parameter),
+                List.<JCTree.JCExpression>nil(),
+                maker.Block(0, List.of(block)),
+                null);
+ //       annotationNode.addError(String.format("methodDef: %s", methodDef));
+        createRelevantNonNullAnnotation(typeNode, methodDef);
+        return recursiveSetGeneratedBy(methodDef, annotationNode.get(), typeNode.getContext());
+    }
+
+    private JCTree.JCVariableDecl buildFromBeanParam(JCTree.JCExpression paramType, JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
         long flags = addFinalIfNeeded(Flags.PARAMETER, typeNode.getContext());
         return maker.VarDef(maker.Modifiers(flags),
-                typeNode.toName(CLAZZ_PARAM_NAME),
-                maker.TypeApply(maker.Ident(typeNode.toName("Class")), List.<JCTree.JCExpression>of(maker.Ident(typeNode.toName("T")))),
+                typeNode.toName(POJO_PARAM_NAME),
+                paramType,
                 null);
     }
 
 
-    private JCTree.JCVariableDecl buildFromBeanParam(JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
-        long flags = addFinalIfNeeded(Flags.PARAMETER, typeNode.getContext());
-        return maker.VarDef(maker.Modifiers(flags),
-                typeNode.toName(PARAM_PARAM_NAME),
-                maker.Ident(typeNode.toName("T")),
-                null);
-    }
-
-
-    private JCTree.JCStatement getFromBeanStatement(JavacNode typeNode, lombok.javac.JavacTreeMaker maker, JCTree.JCExpression returnType) {
+    private JCTree.JCStatement getFromBeanStatement(JCTree.JCExpression returnType, JavacNode typeNode, lombok.javac.JavacTreeMaker maker) {
         ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
-        args.append(maker.Ident(typeNode.toName(PARAM_PARAM_NAME)))
+        args.append(maker.Ident(typeNode.toName(POJO_PARAM_NAME)))
                 .append(maker.Select(returnType, typeNode.toName("class")));
 
         JCTree.JCExpression jcExpression = chainDots(typeNode, "com", "xyz", "utils", "JsonUtils", "convert");

@@ -22,7 +22,7 @@ import static lombok.javac.handlers.JavacHandlerUtil.*;
  */
 
 @ProviderFor(JavacAnnotationHandler.class)
-public class HandleJson extends JavacAnnotationHandler<JsonSerializable> {
+public class HandleJsonSerializable extends JavacAnnotationHandler<JsonSerializable> {
     private static final String TO_JSON_FIELD_NAME = "toJson",
             FROM_JSON_FIELD_NAME = "fromJson",
             JSON_STRING_PARAMETERS_NAME = "jsonStr";
