@@ -6,26 +6,33 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * @author lihongbin
  * <p>
- * convert pojo to Class
- * <p>
- * public class ConvertExample {
- * <p>
- * public <T> T toBean(Class<T> cls) throws IllegalAccessException, InstantiationException {
- * return cls.newInstance();
+ * Convert pojo to another bean:
+ * @Convertable(bean = AnotherPojo.class)
+ * public class Pojo {
+ * ......
  * }
  * <p>
- * public static <T> ConvertExample fromBean(T t) {
- * ConvertExample convertExample = new ConvertExample();
- * return convertExample;
+ * public class AnotherPojo {
+ * ......
  * }
  * <p>
- * //get/set methds here
- * .........
+ * will generate codes:
+ * <p>
+ * public class Pojo {
+ * <p>
+ * public AnotherPojo toBean() {
+ * return JsonUtils.convert(this, AnotherPojo.class.getName());
+ * }
+ * <p>
+ * public static Pojo fromBean(AnotherPojo apojo) {
+ * return JsonUtils.convert(apojo, Pojo.class);
+ * }
+ * <p>
  * }
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
 public @interface Convertable {
+    Class<?> bean() default Object.class;
 }
