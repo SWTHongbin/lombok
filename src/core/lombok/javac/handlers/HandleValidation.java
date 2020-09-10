@@ -11,7 +11,9 @@ import org.mangosdk.spi.ProviderFor;
 
 import static lombok.javac.handlers.JavacHandlerUtil.*;
 
-
+/**
+ * @author lihongbin
+ */
 @ProviderFor(JavacAnnotationHandler.class)
 public class HandleValidation extends JavacAnnotationHandler<Validation> {
 
