@@ -35,7 +35,6 @@ public class HandleValidation extends JavacAnnotationHandler<Validation> {
             annotationNode.addError("@Validation is only supported on a class.");
             return;
         }
-        lombok.javac.JavacTreeMaker maker = typeNode.getTreeMaker();
         String className = typeNode.getName();
         if (typeNode.get() instanceof JCTree.JCClassDecl) {
             for (JCTree def : ((JCTree.JCClassDecl) typeNode.get()).defs) {
