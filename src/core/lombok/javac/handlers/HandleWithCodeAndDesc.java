@@ -142,7 +142,9 @@ import lombok.javac.handlers.JavacHandlerUtil.MemberExistsResult;
 		return maker.ForeachLoop(varDef, entrySetInvocation, forEachBody);
 	}
 	
-	// throw new IllegalArgumentException("Unknown code value, please check again");
+	/*
+	 * throw new IllegalArgumentException("Unknown code value, please check again");
+	 */
 	private JCStatement createThrowStatement(JavacNode typeNode, JavacTreeMaker maker) {
 		JCExpression exceptionType = genJavaLangTypeRef(typeNode, "IllegalArgumentException");
 		List<JCExpression> jceBlank = List.nil();
