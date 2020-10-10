@@ -21,7 +21,8 @@ import static lombok.javac.handlers.JavacHandlerUtil.*;
  * public AnotherPojo toBean(); public static Pojo fromBean(AnotherPojo bean)
  */
 
-@ProviderFor(JavacAnnotationHandler.class) public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
+@ProviderFor(JavacAnnotationHandler.class) 
+public class HandleConvertable extends JavacAnnotationHandler<Convertable> {
 	private static final String TO_BEAN_METHOD_NAME = "toBean", 
 		FROM_BEAN_METHOD_NAME = "fromBean", 
 		POJO_PARAM_NAME = "pojo", 
